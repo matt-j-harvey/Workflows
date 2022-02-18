@@ -110,11 +110,15 @@ mutants = ["/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_
 
 all_mice = controls + mutants
 
+
+controls =
+
+
 start_window = -10
 stop_window = 40
 onset_files = ["visual_context_stable_vis_2_frame_onsets.npy", "odour_context_stable_vis_2_frame_onsets.npy"]
 tensor_names = ["Vis_2_Stable_Visual", "Vis_2_Stable_Odour"]
 
 
-for base_directory in all_mice:
+for base_directory in controls:
     residual_analysis_workflow(base_directory, onset_files, tensor_names, start_window, stop_window)

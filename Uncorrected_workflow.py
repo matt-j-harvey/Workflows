@@ -9,6 +9,7 @@ import Downsample_Running_Trace
 import Create_Activity_Tensor
 import Create_Video_From_Tensor
 import Quantify_Region_Responses
+import Create_Behaviour_Tensor
 
 
 
@@ -20,7 +21,7 @@ def check_directory(directory):
 
 
 
-def uncorrected_workflow(base_directory, onsets_file_list, tensor_names, start_window, stop_window, experiment_name, plot_titles, recalculate=False):
+def uncorrected_workflow_single_mouse(base_directory, onsets_file_list, tensor_names, start_window, stop_window, experiment_name, plot_titles, recalculate=False):
 
 
     # Check Workflow Directories
@@ -47,6 +48,7 @@ def uncorrected_workflow(base_directory, onsets_file_list, tensor_names, start_w
     elif len(onsets_file_list) == 3:
         Create_Video_From_Tensor.create_single_mouse_comparison_video_3_conditions(base_directory, tensor_names, start_window, stop_window, plot_titles, video_save_directory)
 
+
     # Plot Region Responses
     """
     condition_names = [tensor_names[0], tensor_names[1]]
@@ -57,49 +59,108 @@ def uncorrected_workflow(base_directory, onsets_file_list, tensor_names, start_w
     """
 
 
-#"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_17_Transition_Imaging",
-
-controls = ["/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_04_02_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_10_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NRXN78.1A/2020_12_09_Switching_Imaging",
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NRXN78.1D/2020_11_29_Switching_Imaging"]
-
-mutants = ["/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK4.1A/2021_04_12_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK10.1A/2021_06_18_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK12.1F/2021_09_22_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NRXN71.2A/2020_12_17_Switching_Imaging"]
+def uncorrected_workflow_group(base_directory_list, onset_file_list, tensor_names, plot_titles, start_window, stop_window, save_directory, selected_ai_traces):
 
 
-"""
+    # Check Save Directory
+    check_directory(save_directory)
+
+    # Get Number Of Conditions
+    number_of_conditions = len(tensor_names)
+
+    # Create List To Hold Activity Tensors
+    activity_tensor_list = []
+
+    for condition_index in range(number_of_conditions):
+
+        condition_name = tensor_names[condition_index]
+        condition_tensor_list = []
+
+        print(condition_name)
+        for base_directory in base_directory_list:
+            print(base_directory)
+
+            # Load Activity Tensor
+            activity_tensor = np.load(os.path.join(base_directory, "Activity_Tensors", condition_name + "_Activity_Tensor.npy"))
+
+            # Get Average
+            mean_activity = np.mean(activity_tensor, axis=0)
+
+            # Add To List
+            condition_tensor_list.append(mean_activity)
+
+        # Get Group Mean
+        condition_tensor_list = np.array(condition_tensor_list)
+        condition_mean_tensor = np.mean(condition_tensor_list, axis=0)
+        activity_tensor_list.append(condition_mean_tensor)
+
+
+    # Create An Empty List To Hold A Behavioural Dictionary For Each Condition
+    behaviour_dict_list = []
+
+    for condition_index in range(number_of_conditions):
+
+        # Create Dictionary To Hold List Of Mean Traces
+        mean_behaviour_trace_dict = {}
+        for trace in selected_ai_traces:
+            mean_behaviour_trace_dict[trace] = []
+
+        # Get Mean For Each Session
+        onsets_file = onset_file_list[condition_index][0]
+        for base_directory in base_directory_list:
+            behaviour_tensor = Create_Behaviour_Tensor.create_behaviour_tensor(base_directory, onsets_file, start_window, stop_window, selected_ai_traces)
+
+            # Get Mean
+            for trace in selected_ai_traces:
+                mean_behaviour_trace_dict[trace].append(np.mean(behaviour_tensor[trace], axis=0))
+
+        # Get Group Mean For Each Behavioural Trace
+        for trace in selected_ai_traces:
+            mean_behaviour_trace_dict[trace] = np.mean(mean_behaviour_trace_dict[trace], axis=0)
+
+        behaviour_dict_list.append(mean_behaviour_trace_dict)
+
+    if len(activity_tensor_list) == 2 :
+        Create_Video_From_Tensor.create_generic_comparison_video_behaviour(base_directory_list[0], activity_tensor_list, start_window, stop_window, plot_titles, save_directory, behaviour_dict_list)
+
+    if len(activity_tensor_list) == 3:
+        Create_Video_From_Tensor.create_generic_comparison_video_3_conditions_behaviour(base_directory_list[0], activity_tensor_list, start_window, stop_window, plot_titles, save_directory, behaviour_dict_list)
+
+
+
+
+
+
+
+
+controls = [
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_02_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_08_Transition_Imaging",
+
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_23_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_31_Transition_Imaging",
+
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_15_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_17_Transition_Imaging",
+
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_10_29_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_11_05_Transition_Imaging"
+            ]
+
+
+experiment_name = "Vis 2 Contextual Modulation"
 start_window = -10
-stop_window = 280
-onset_files = [["perfect_transition_onsets.npy"], ["odour_expected_present_onsets.npy"], ["odour_not_expected_not_present_onsets.npy"]]
-tensor_names = ["perfect_transitions", "odour_expected_present", "odour_not_expected_not_present"]
-experiment_name = "Absence_Of_Expected_Odour"
-plot_titles = ["perfect_transitions", "odour_expected_present", "odour_not_expected_not_present"]
-"""
+stop_window = 56
+onset_files = [["visual_context_stable_vis_2_onsets.npy"], ["odour_context_stable_vis_2_onsets.npy"]]
+tensor_names = ["Visual_Context_Stable_Vis_2", "Odour_Context_Stable_Vis_2"]
+plot_titles = ["Visual_Context_Stable_Vis_2", "Odour_Context_Stable_Vis_2"]
+behavioural_traces = ["Running", "Lick", "Visual 1"]
+combined_video_save_directory = r"/home/matthew/Documents/Thesis_Comitte_24_02_2022/Vis_2_Contextual_Modulation_Controls_Raw"
 
+# Get For Each Mouse
+for base_directory in controls:
+    uncorrected_workflow_single_mouse(base_directory, onset_files, tensor_names, start_window, stop_window, experiment_name, plot_titles)
 
-start_window = -40
-stop_window = 40
-onset_files = [["odour_2_cued_onsets.npy"], ["odour_2_not_cued_onsets.npy"]]
-tensor_names = ["Odour_2_Cued", "Odour_2_Not_Cued"]
-experiment_name = "Odour_2_Cuing_Effect"
-plot_titles = ["Odour_2_Cued", "Odour_2_Not_Cued"]
+# Get For Group
+uncorrected_workflow_group(controls, onset_files, tensor_names, plot_titles, start_window, stop_window, combined_video_save_directory, behavioural_traces)
 
-all_mice = controls + mutants
-for base_directory in all_mice:
-    uncorrected_workflow(base_directory, onset_files, tensor_names, start_window, stop_window, experiment_name, plot_titles)
-
-
-start_window = -40
-stop_window = 40
-onset_files = [["odour_1_cued_onsets.npy"], ["odour_1_not_cued_onsets.npy"]]
-tensor_names = ["Odour_1_Cued", "Odour_1_Not_Cued"]
-experiment_name = "Odour_1_Cuing_Effect"
-plot_titles = ["Odour_1_Cued", "Odour_1_Not_Cued"]
-
-all_mice = controls + mutants
-for base_directory in all_mice:
-    uncorrected_workflow(base_directory, onset_files, tensor_names, start_window, stop_window, experiment_name, plot_titles)
