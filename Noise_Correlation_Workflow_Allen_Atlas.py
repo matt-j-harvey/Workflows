@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.cluster.hierarchy import ward, dendrogram, leaves_list
 from scipy.spatial.distance import pdist
-from sklearn.linear_model import LinearRegression
 
 sys.path.append("/home/matthew/Documents/Github_Code/Widefield_Analysis/Movement_Controls/Residual_Analysis")
 sys.path.append("/home/matthew/Documents/Github_Code/Widefield_Analysis/Trial_Aligned_Analysis")
@@ -16,7 +15,7 @@ sys.path.append("/home/matthew/Documents/Github_Code/Widefield_Preprocessing")
 
 import Create_Activity_Tensor
 import Get_Region_Mean_Tensor
-import Perform_Psychophysical_Interaction_Analysis
+import Perform_Noise_Correlation_Analysis
 import Widefield_General_Functions
 
 
@@ -65,46 +64,88 @@ def load_atlas_labels(selected_region_names):
 
 
 
-def regress_out_running_from_activity_tensor(activity_tensor_list, bodycam_tensor):
 
-    # Get Trials For Each Stimuli
-    stimuli_1_trials = np.shape(activity_tensor_list[0])[0]
+def noise_correlation_workflow(base_directory, context_1_onsets, context_2_onsets, start_window, stop_window):
 
-    # Create Concatenated Activity Tensor
-    concatenated_activity_tensor = np.vstack(activity_tensor_list)
+    # Load Pixel Assignments
+    print(base_directory)
+    pixel_assignments = np.load("/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging/Pixel_Assignmnets.npy")
+    cluster_list = list(np.unique(pixel_assignments))
+    number_of_clusters = len(cluster_list)
+    print("number of clusters", number_of_clusters)
+    print("cluster list", cluster_list)
 
-    #get Data Structure
-    number_of_trials = np.shape(concatenated_activity_tensor)[0]
-    trial_length = np.shape(concatenated_activity_tensor)[1]
-    number_of_rois = np.shape(concatenated_activity_tensor)[2]
-    number_of_components = np.shape(bodycam_tensor)[2]
+    # Show Pixel Assignmnent Image
+    """
+    pixel_assignment_image = np.load("/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging/Pixel_Assignmnets_Image.npy")
+    plt.imshow(pixel_assignment_image)
+    plt.show()
+    """
 
-    # Flatten Tensors
-    flat_activity_tensor = np.reshape(concatenated_activity_tensor, (number_of_trials * trial_length, number_of_rois))
-    flat_bodycam_tensor = np.reshape(bodycam_tensor, (number_of_trials * trial_length, number_of_components))
+    # Check Output Folders Exist
+    functional_connectivity_directory = os.path.join(base_directory, "Functional Connectivity Analysis")
+    correlation_map_save_directory = os.path.join(functional_connectivity_directory, "Noise Correlations")
+    check_directory(functional_connectivity_directory)
+    check_directory(correlation_map_save_directory)
 
-    # Create Model
-    model = LinearRegression()
-    model.fit(X=flat_bodycam_tensor, y=flat_activity_tensor)
+    # Create Tensors
+    number_of_context_1_conditions = len(context_1_onsets)
+    number_of_context_2_conditions = len(context_2_onsets)
 
-    # Predict Activity from Bodycam
-    predicited_activity = model.predict(X=flat_bodycam_tensor)
+    context_1_activity_tensor_list = []
+    for condition_index in range(number_of_context_1_conditions):
+        activity_tensor = Create_Activity_Tensor.create_allen_atlas_activity_tensor(base_directory, context_1_onsets[condition_index], start_window, stop_window)
+        activity_tensor = np.nan_to_num(activity_tensor)
+        context_1_activity_tensor_list.append(activity_tensor)
 
-    # Correct Activity
-    corrected_activity = np.subtract(flat_activity_tensor, predicited_activity)
-    corrected_activity = np.ndarray.reshape(corrected_activity, (number_of_trials, trial_length, number_of_rois))
-
-    # Split Back Into Stimuli Tensors
-    stimuli_1_activity_tensor = corrected_activity[0:stimuli_1_trials]
-    stimuli_2_activity_tensor = corrected_activity[stimuli_1_trials:]
-
-    stimuli_1_bodycam_tensor = bodycam_tensor[0:stimuli_1_trials]
-    stimuli_2_bodycam_tensor = bodycam_tensor[stimuli_1_trials:]
-
-    return [stimuli_1_activity_tensor, stimuli_2_activity_tensor], [stimuli_1_bodycam_tensor, stimuli_2_bodycam_tensor]
-
+    context_2_activity_tensor_list = []
+    for condition_index in range(number_of_context_2_conditions):
+        activity_tensor = Create_Activity_Tensor.create_allen_atlas_activity_tensor(base_directory, context_2_onsets[condition_index], start_window, stop_window)
+        activity_tensor = np.nan_to_num(activity_tensor)
+        context_2_activity_tensor_list.append(activity_tensor)
 
 
+    context_1_meta_list = []
+    context_2_meta_list = []
+
+    for region_label in cluster_list:
+
+        allen_region_index = cluster_list.index(region_label)
+        print("Region: ", region_label, "Index ", allen_region_index)
+        #print("Region Index:", allen_region_index)
+
+        # Create Region Tensors
+        context_1_region_tensor_list = []
+        for condition_index in range(number_of_context_1_conditions):
+            activity_tensor = context_1_activity_tensor_list[condition_index]
+            region_tensor = activity_tensor[:, :, allen_region_index]
+            #region_tensor = np.expand_dims(region_tensor, 2)
+            context_1_region_tensor_list.append(region_tensor)
+
+
+        context_2_region_tensor_list = []
+        for condition_index in range(number_of_context_2_conditions):
+            activity_tensor = context_2_activity_tensor_list[condition_index]
+            region_tensor = activity_tensor[:, :, allen_region_index]
+            #region_tensor = np.expand_dims(region_tensor, 2)
+            context_2_region_tensor_list.append(region_tensor)
+
+
+        # Perform Noise Correlation Analysis
+
+
+        context_1_correlation_map, context_2_correlation_map = Perform_Noise_Correlation_Analysis.analyse_noise_correlations(context_1_activity_tensor_list, context_2_activity_tensor_list, context_1_region_tensor_list, context_2_region_tensor_list)
+        context_1_meta_list.append(context_1_correlation_map)
+        context_2_meta_list.append(context_2_correlation_map)
+
+
+    context_1_meta_list = np.array(context_1_meta_list)
+    context_2_meta_list = np.array(context_2_meta_list)
+    print("Meta Array Shape", np.shape(context_1_meta_list))
+    print("Meta Array Shape", np.shape(context_2_meta_list))
+
+    np.save(os.path.join(correlation_map_save_directory, "Context_1_Correlation_Map.npy"), context_1_meta_list)
+    np.save(os.path.join(correlation_map_save_directory, "Context_2_Correlation_Map.npy"), context_2_meta_list)
 
 
 def view_coefficient_vector(pixel_assignments, cluster_label_list, cluster_vector, indicies, image_height, image_width):
@@ -138,6 +179,7 @@ def view_coefficient_vector(pixel_assignments, cluster_label_list, cluster_vecto
 
 
 def view_ppi_modulation(base_directory, region_group_name):
+
     # Laod Mask
     indicies, image_height, image_width = Widefield_General_Functions.load_mask(base_directory)
 
@@ -333,19 +375,9 @@ def view_modulation_matricies(session_list):
     modulation_matrix_list = []
 
     for base_directory in session_list:
-        ppi_coef_meta_list = np.load(os.path.join(base_directory,   "Functional Connectivity Analysis/Psychophysical Interactions/PPI_Coefs_All_Regions.npy"))
-        print(np.shape(ppi_coef_meta_list))
-
-        context_1_matrix = ppi_coef_meta_list[:, :, 1]
-        context_2_matrix = ppi_coef_meta_list[:, :, 2]
-
-        # symmetrize
-        #context_1_matrix = np.mean(np.array([context_1_matrix, np.transpose(context_1_matrix)]), axis=0)
-        #context_2_matrix = np.mean(np.array([context_2_matrix, np.transpose(context_2_matrix)]), axis=0)
-
-
+        context_1_matrix = np.load(os.path.join(base_directory, "Functional Connectivity Analysis", "Noise Correlations", "Context_1_Correlation_Map.npy"))
+        context_2_matrix = np.load(os.path.join(base_directory, "Functional Connectivity Analysis", "Noise Correlations", "Context_2_Correlation_Map.npy"))
         difference_matrix = np.subtract(context_1_matrix, context_2_matrix)
-
 
         context_1_matrix_list.append(context_1_matrix)
         context_2_matrix_list.append(context_2_matrix)
@@ -357,7 +389,6 @@ def view_modulation_matricies(session_list):
 
         #difference_matrix, [context_1_matrix, context_2_matrix] = jointly_sort_matricies(difference_matrix, [context_1_matrix, context_2_matrix])
 
-
         rows = 1
         columns = 3
         figure_1 = plt.figure()
@@ -366,7 +397,6 @@ def view_modulation_matricies(session_list):
         differnece_axis = figure_1.add_subplot(rows, columns, 3)
     
         print("context 2 mstrix shape", np.shape(context_1_matrix))
-        figure_1.suptitle(str(base_directory.split('/')[-2:]))
         context_1_axis.imshow(context_1_matrix,     cmap='bwr', vmin=-1*context_1_matrix_magnitude,  vmax=context_1_matrix_magnitude)
         context_2_axis.imshow(context_2_matrix,     cmap='bwr', vmin=-1*context_2_matrix_magnitude,  vmax=context_2_matrix_magnitude)
         differnece_axis.imshow(difference_matrix,   cmap='bwr', vmin=-1*difference_matrix_magnitude, vmax=difference_matrix_magnitude)
@@ -376,18 +406,18 @@ def view_modulation_matricies(session_list):
 
     modulation_matrix_list = np.array(modulation_matrix_list)
     mean_modulation_matrix = np.mean(modulation_matrix_list, axis=0)
-
-    plt.title("Unthresholded PPI Connectivity")
     plt.imshow(mean_modulation_matrix, cmap='bwr', vmin=-1*np.max(np.abs(mean_modulation_matrix)), vmax=np.max(np.abs(mean_modulation_matrix)))
     plt.show()
 
-    #anyzmean_modulation_matrix = np.add(mean_modulation_matrix, np.transpose(mean_modulation_matrix))
+
+
+
+    #mean_modulation_matrix = np.add(mean_modulation_matrix, np.transpose(mean_modulation_matrix))
     t_stats, p_values = stats.ttest_rel(context_1_matrix_list, context_2_matrix_list)
 
     p_threshold = 0.05
     thresholded_modulation_matrix = np.where(p_values < p_threshold, mean_modulation_matrix, 0)
 
-    plt.title("Thresholded PPI Connectivity")
     plt.imshow(thresholded_modulation_matrix, cmap='bwr', vmin=-1*np.max(np.abs(mean_modulation_matrix)), vmax=np.max(np.abs(mean_modulation_matrix)))
     plt.show()
 
@@ -405,6 +435,7 @@ def get_significant_modulation(all_mice):
     indicies, height, width = Widefield_General_Functions.load_mask(all_mice[0])
 
     for region in region_list:
+
         for base_directory in all_mice:
 
             ppi_coefs = np.load(os.path.join(base_directory, "Functional Connectivity Analysis", "Psychophysical Interactions", region + "_PPI_Coefs.npy"))
@@ -441,275 +472,51 @@ def get_significant_modulation(all_mice):
         image = Widefield_General_Functions.create_image_from_data(t_stats, indicies, height, width)
         image_magnitude = np.max(np.abs(image))
 
-def flatten_region_tensor(tensor):
-    number_of_trials = np.shape(tensor)[0]
-    trial_length = np.shape(tensor)[1]
-    tensor = np.reshape(tensor, (trial_length * number_of_trials))
-    return tensor
-
-
-def examine_motor_v1_relationship(base_directory, context_1_onsets, context_2_onsets, start_window, stop_window):
-
-    # Load Pixel Assignments
-    print(base_directory)
-    pixel_assignments = np.load("/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging/Pixel_Assignmnets.npy")
-    cluster_list = list(np.unique(pixel_assignments))
-    number_of_clusters = len(cluster_list)
-    print("number of clusters", number_of_clusters)
-    print("cluster list", cluster_list)
-
-    # Show Pixel Assignmnent Image
-    pixel_assignment_image = np.load("/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging/Pixel_Assignmnets_Image.npy")
-    plt.imshow(pixel_assignment_image)
-    plt.show()
-
-    # Create Tensors
-    number_of_context_1_conditions = len(context_1_onsets)
-    number_of_context_2_conditions = len(context_2_onsets)
-
-    context_1_activity_tensor_list = []
-    for condition_index in range(number_of_context_1_conditions):
-        activity_tensor = Create_Activity_Tensor.create_allen_atlas_activity_tensor(base_directory, context_1_onsets[condition_index], start_window, stop_window)
-        activity_tensor = np.nan_to_num(activity_tensor)
-        context_1_activity_tensor_list.append(activity_tensor)
-
-    context_2_activity_tensor_list = []
-    for condition_index in range(number_of_context_2_conditions):
-        activity_tensor = Create_Activity_Tensor.create_allen_atlas_activity_tensor(base_directory, context_2_onsets[condition_index], start_window, stop_window)
-        activity_tensor = np.nan_to_num(activity_tensor)
-        context_2_activity_tensor_list.append(activity_tensor)
-
-
-    v1_label = 45
-    m2_label = 8
-
-    v1_index = cluster_list.index(v1_label)
-    m2_index = cluster_list.index(m2_label)
-
-    v1_context_1_trace_list = []
-    m2_context_1_trace_list = []
-    v1_context_2_trace_list = []
-    m2_context_2_trace_list = []
-
-    # Create Region Tensors
-    for condition_index in range(number_of_context_1_conditions):
-        activity_tensor = context_1_activity_tensor_list[condition_index]
-        v1_trace = activity_tensor[:, :, v1_index]
-        m2_trace = activity_tensor[:, :, m2_index]
-
-        # Subtract Means
-        v1_mean = np.mean(v1_trace, axis=0)
-        m2_mean = np.mean(m2_trace, axis=0)
-        v1_trace = np.subtract(v1_trace, v1_mean)
-        m2_trace = np.subtract(m2_trace, m2_mean)
-
-        v1_trace = flatten_region_tensor(v1_trace)
-        m2_trace = flatten_region_tensor(m2_trace)
-        v1_context_1_trace_list.append(v1_trace)
-        m2_context_1_trace_list.append(m2_trace)
-
-    for condition_index in range(number_of_context_2_conditions):
-        activity_tensor = context_2_activity_tensor_list[condition_index]
-        v1_trace = activity_tensor[:, :, v1_index]
-        m2_trace = activity_tensor[:, :, m2_index]
-
-        # Subtract Means
-        v1_mean = np.mean(v1_trace, axis=0)
-        m2_mean = np.mean(m2_trace, axis=0)
-        v1_trace = np.subtract(v1_trace, v1_mean)
-        m2_trace = np.subtract(m2_trace, m2_mean)
-
-        v1_trace = flatten_region_tensor(v1_trace)
-        m2_trace = flatten_region_tensor(m2_trace)
-        v1_context_2_trace_list.append(v1_trace)
-        m2_context_2_trace_list.append(m2_trace)
-
-    v1_context_1_trace = np.concatenate(v1_context_1_trace_list)
-    m2_context_1_trace = np.concatenate(m2_context_1_trace_list)
-    v1_context_2_trace = np.concatenate(v1_context_2_trace_list)
-    m2_context_2_trace = np.concatenate(m2_context_2_trace_list)
-
-    figure_1 = plt.figure()
-    context_1_axis = figure_1.add_subplot(2, 1, 1)
-    context_2_axis = figure_1.add_subplot(2, 1, 2)
-
-    context_1_axis.plot(v1_context_1_trace, c='b')
-    context_1_axis.plot(m2_context_1_trace, c='r')
-
-    context_2_axis.plot(v1_context_2_trace, c='b')
-    context_2_axis.plot(m2_context_2_trace, c='r')
-    plt.show()
-
-    figure_1 = plt.figure()
-    context_1_axis = figure_1.add_subplot(2, 1, 1)
-    context_2_axis = figure_1.add_subplot(2, 1, 2)
-
-    context_1_axis.scatter(v1_context_1_trace, m2_context_1_trace, c='orange')
-    context_2_axis.scatter(m2_context_2_trace, v1_context_2_trace, c='green')
-    plt.show()
-
-
-
-
-def psychophysical_interaction_workflow(base_directory, context_1_onsets, context_2_onsets, start_window, stop_window):
-
-    # Load Pixel Assignments
-    print(base_directory)
-    pixel_assignments = np.load("/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging/Pixel_Assignmnets.npy")
-    cluster_list = list(np.unique(pixel_assignments))
-    number_of_clusters = len(cluster_list)
-    print("number of clusters", number_of_clusters)
-    print("cluster list", cluster_list)
-
-    # Show Pixel Assignmnent Image
-    pixel_assignment_image = np.load("/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging/Pixel_Assignmnets_Image.npy")
-    #plt.imshow(pixel_assignment_image)
-    #plt.show()
-
-    # Check Output Folders Exist
-    functional_connectivity_directory = os.path.join(base_directory, "Functional Connectivity Analysis")
-    ppi_save_directory = os.path.join(functional_connectivity_directory, "Psychophysical Interactions")
-    beta_series_save_directory = os.path.join(functional_connectivity_directory, "Beta Series Correlations")
-    check_directory(functional_connectivity_directory)
-    check_directory(ppi_save_directory)
-
-    # Create Tensors
-    number_of_context_1_conditions = len(context_1_onsets)
-    number_of_context_2_conditions = len(context_2_onsets)
-
-    context_1_activity_tensor_list = []
-    for condition_index in range(number_of_context_1_conditions):
-        activity_tensor = Create_Activity_Tensor.create_allen_atlas_activity_tensor(base_directory, context_1_onsets[condition_index], start_window, stop_window)
-        activity_tensor = np.nan_to_num(activity_tensor)
-        context_1_activity_tensor_list.append(activity_tensor)
-
-    context_2_activity_tensor_list = []
-    for condition_index in range(number_of_context_2_conditions):
-        activity_tensor = Create_Activity_Tensor.create_allen_atlas_activity_tensor(base_directory, context_2_onsets[condition_index], start_window, stop_window)
-        activity_tensor = np.nan_to_num(activity_tensor)
-        context_2_activity_tensor_list.append(activity_tensor)
-
-
-    # Load Bodycam Tensors
-    context_1_bodycam_tensor = np.load(os.path.join(beta_series_save_directory, "Condition_1_Bodycam_Tensor.npy"))
-    context_2_bodycam_tensor = np.load(os.path.join(beta_series_save_directory, "Condition_2_Bodycam_Tensor.npy"))
-
-    # Regress Out Movement
-    #context_1_activity_tensor_list, context_1_bodycam_tensor_list = regress_out_running_from_activity_tensor(context_1_activity_tensor_list, condition_1_bodycam_tensor)
-    #context_2_activity_tensor_list, context_2_bodycam_tensor_list = regress_out_running_from_activity_tensor(context_2_activity_tensor_list, condition_2_bodycam_tensor)
-
-
-    ppi_coef_meta_list = []
-
-    for region_label in cluster_list:
-
-        allen_region_index = cluster_list.index(region_label)
-        print("Region: ", region_label, "Index ", allen_region_index)
-        #print("Region Index:", allen_region_index)
-
-        # Create Region Tensors
-        context_1_region_tensor_list = []
-        for condition_index in range(number_of_context_1_conditions):
-            activity_tensor = context_1_activity_tensor_list[condition_index]
-            region_tensor = activity_tensor[:, :, allen_region_index]
-            context_1_region_tensor_list.append(region_tensor)
-
-
-        context_2_region_tensor_list = []
-        for condition_index in range(number_of_context_2_conditions):
-            activity_tensor = context_2_activity_tensor_list[condition_index]
-            region_tensor = activity_tensor[:, :, allen_region_index]
-            context_2_region_tensor_list.append(region_tensor)
-
-
-        # Check Shape
-        """
-        for tensor in context_1_activity_tensor_list:
-            print("Activity Tensor Shape", np.shape(tensor))
-
-        for tensor in context_1_region_tensor_list:
-            print("Region Tensor Shape", np.shape(tensor))
-        """
-
-        # Perform Noise Correlation Analysis
-        ppi_coefs = Perform_Psychophysical_Interaction_Analysis.create_ppi_model(context_1_activity_tensor_list, context_2_activity_tensor_list, context_1_region_tensor_list, context_2_region_tensor_list, context_1_bodycam_tensor, context_2_bodycam_tensor)
-        ppi_coef_meta_list.append(ppi_coefs)
-
-    ppi_coef_meta_list = np.array(ppi_coef_meta_list)
-    print("Meta Array Shape", np.shape(ppi_coef_meta_list))
-
-    ppi_coef_filename = "PPI_Coefs_All_Regions.npy"
-    np.save(os.path.join(ppi_save_directory, ppi_coef_filename), ppi_coef_meta_list)
-
-
 
 
 
 
 controls = [
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_02_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_08_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_02_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_08_Transition_Imaging",
 
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_23_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_31_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_23_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_31_Transition_Imaging",
 
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_15_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_17_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_15_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_17_Transition_Imaging",
 
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_10_29_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_11_05_Transition_Imaging"
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_10_29_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_11_05_Transition_Imaging"
             ]
 
 
-mutants = [
-"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK10.1A/2021_06_18_Transition_Imaging",
-"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging",
+mutants = ["/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK4.1A/2021_04_12_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK10.1A/2021_06_18_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK12.1F/2021_09_22_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NRXN71.2A/2020_12_17_Switching_Imaging"]
 
-"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK4.1A/2021_04_10_Transition_Imaging",
-"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK4.1A/2021_04_12_Transition_Imaging",
 
-"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK24.1C/2021_11_10_Transition_Imaging",
-
-"/media/matthew/Seagate Expansion Drive1/Transition_2/NXAK20.1B/2021_11_22_Transition_Imaging",
-"/media/matthew/Seagate Expansion Drive1/Transition_2/NXAK20.1B/2021_11_24_Transition_Imaging",
-"/media/matthew/Seagate Expansion Drive1/Transition_2/NXAK20.1B/2021_11_26_Transition_Imaging",
-]
-
+all_mice = controls
 
 start_window = -10
 stop_window = 20
 context_1_onset_files = [["visual_context_stable_vis_1_onsets.npy"], ["visual_context_stable_vis_2_onsets.npy"]]
 context_2_onset_files = [["odour_context_stable_vis_1_onsets.npy"],  ["odour_context_stable_vis_2_onsets.npy"]]
 
-#context_1_onset_files = [["visual_context_stable_vis_2_onsets.npy"]]
-#context_2_onset_files = [["odour_context_stable_vis_2_onsets.npy"]]
+context_1_onset_files = [["visual_context_stable_vis_2_onsets.npy"]]
+context_2_onset_files = [["odour_context_stable_vis_2_onsets.npy"]]
 
 #context_1_onset_files = [["visual_context_stable_vis_1_onsets.npy"]]
 #context_2_onset_files = [["odour_context_stable_vis_1_onsets.npy"]]
 
 
 
-selected_regions = [['Primary_Visual_Left', 'Primary_Visual_Right'],
-                    ['Retosplenlial_Dorsal'],
-                    ['Secondary_Motor_Left','Secondary_Motor_Right'],
-                    ['Primary_Somatosensory_Barrel_Left', 'Primary_Somatosensory_Barrel_Right']]
+for base_directory in all_mice:
+    noise_correlation_workflow(base_directory, context_1_onset_files, context_2_onset_files, start_window, stop_window)
+    #psychophysical_interaction_workflow(base_directory, context_1_onset_files, context_2_onset_files, start_window, stop_window)
+    #view_stimuli_regressors(base_directory, len(context_1_onset_files) + len(context_2_onset_files), start_window, stop_window)
 
-region_group_names = ["Prinary_Visual", "Retrosplenial", "Secondary_Motor", "Somatosensory"]
+view_modulation_matricies(all_mice)
 
-
-#all_mice = ["/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_10_Transition_Imaging"]
-#selected_regions, region_group_names
-
-#view_modulation_matricies(controls)
-
-"""
-for base_directory in controls:
-    psychophysical_interaction_workflow(base_directory, context_1_onset_files, context_2_onset_files, start_window, stop_window)
-
-for base_directory in mutants:
-    psychophysical_interaction_workflow(base_directory, context_1_onset_files, context_2_onset_files, start_window, stop_window)
-"""
-
-
-view_modulation_matricies(controls)
-view_modulation_matricies(mutants)

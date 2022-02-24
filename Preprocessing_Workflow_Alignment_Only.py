@@ -48,15 +48,15 @@ def null_function():
 
 
 
-template_directory = "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging"
+template_directory = "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging"
 
 
-session_list = ["/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK24.1C/2021_11_10_Transition_Imaging",
-                "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK24.1C/2021_11_05_Transition_Imaging",
-                "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK24.1C/2021_11_08_Transition_Imaging"
-                ]
+session_list = [r"/media/matthew/Seagate Expansion Drive/Transition_2/NXAK20.1B/2021_11_22_Transition_Imaging",
+                r"/media/matthew/Seagate Expansion Drive/Transition_2/NXAK20.1B/2021_11_24_Transition_Imaging",
+                r"/media/matthew/Seagate Expansion Drive/Transition_2/NXAK20.1B/2021_11_26_Transition_Imaging"]
 
-base_directory = session_list[-2]
+
+base_directory = session_list[2]
 
 print("Aliging: ", base_directory)
 

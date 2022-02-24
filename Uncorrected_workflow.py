@@ -38,7 +38,7 @@ def uncorrected_workflow_single_mouse(base_directory, onsets_file_list, tensor_n
     # Get Activity Tensors
     number_of_conditions = len(onsets_file_list)
     for condition_index in range(number_of_conditions):
-        Create_Activity_Tensor.create_activity_tensor(base_directory, onsets_file_list[condition_index], start_window, stop_window, tensor_names[condition_index], running_correction=False)
+        Create_Activity_Tensor.create_activity_tensor(base_directory, onsets_file_list[condition_index], start_window, stop_window, tensor_names[condition_index])
 
 
     # View Individual Movie
@@ -134,33 +134,51 @@ def uncorrected_workflow_group(base_directory_list, onset_file_list, tensor_name
 
 
 controls = [
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_02_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_08_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_02_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_08_Transition_Imaging",
 
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_23_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_31_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_23_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_31_Transition_Imaging",
 
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_15_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_17_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_15_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_17_Transition_Imaging",
 
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_10_29_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_11_05_Transition_Imaging"
+            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_10_29_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_11_05_Transition_Imaging"
             ]
 
 
-experiment_name = "Vis 2 Contextual Modulation"
+mutants = [
+"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK10.1A/2021_06_18_Transition_Imaging",
+"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging",
+
+"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK4.1A/2021_04_10_Transition_Imaging",
+"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK4.1A/2021_04_12_Transition_Imaging",
+
+"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK24.1C/2021_11_10_Transition_Imaging",
+
+"/media/matthew/Seagate Expansion Drive1/Transition_2/NXAK20.1B/2021_11_22_Transition_Imaging",
+"/media/matthew/Seagate Expansion Drive1/Transition_2/NXAK20.1B/2021_11_24_Transition_Imaging",
+"/media/matthew/Seagate Expansion Drive1/Transition_2/NXAK20.1B/2021_11_26_Transition_Imaging",
+]
+
+
+experiment_name = "Absence Of Expected Odour"
 start_window = -10
-stop_window = 56
-onset_files = [["visual_context_stable_vis_2_onsets.npy"], ["odour_context_stable_vis_2_onsets.npy"]]
-tensor_names = ["Visual_Context_Stable_Vis_2", "Odour_Context_Stable_Vis_2"]
-plot_titles = ["Visual_Context_Stable_Vis_2", "Odour_Context_Stable_Vis_2"]
-behavioural_traces = ["Running", "Lick", "Visual 1"]
-combined_video_save_directory = r"/home/matthew/Documents/Thesis_Comitte_24_02_2022/Vis_2_Contextual_Modulation_Controls_Raw"
+stop_window = 85
+onset_files = [["odour_not_expected_not_present_onsets.npy"], ["odour_expected_absent_onsets.npy"], ["odour_expected_present_onsets.npy"]]
+tensor_names = ["Odour_Absent_Not_Expected", "Odour_Absent_Expected", "Odour_Present_Expected"]
+plot_titles = ["Odour_Absent_Not_Expected", "Odour_Absent_Expected", "Odour_Present_Expected"]
+behavioural_traces = ["Running", "Visual 1", "Visual 2", "Odour 1", "Odour 2"]
+combined_video_save_directory = r"/home/matthew/Documents/Thesis_Comitte_24_02_2022/Absence_of_Expected_Odour_Controls_Raw"
+
+
 
 # Get For Each Mouse
-for base_directory in controls:
+"""
+for base_directory in mutants:
     uncorrected_workflow_single_mouse(base_directory, onset_files, tensor_names, start_window, stop_window, experiment_name, plot_titles)
-
+"""
 # Get For Group
-uncorrected_workflow_group(controls, onset_files, tensor_names, plot_titles, start_window, stop_window, combined_video_save_directory, behavioural_traces)
+uncorrected_workflow_group(mutants, onset_files, tensor_names, plot_titles, start_window, stop_window, combined_video_save_directory, behavioural_traces)
 

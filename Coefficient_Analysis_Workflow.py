@@ -11,7 +11,7 @@ import Create_Video_From_Tensor
 import Quantify_Region_Responses
 import Widefield_General_Functions
 import Ridge_Regression_Model
-import Get_Bodycam_SVD_Tensor
+import Get_Bodycam_Incremental_PCA_Tensor
 import Match_Mousecam_Frames_To_Widefield_Frames
 
 
@@ -95,7 +95,7 @@ def coefficient_analysis_workflow_single_mouse(base_directory, onsets_file_list,
     print("Video File", video_file)
 
     # Get Mousecam Tensors
-    condition_1_bodycam_tensor, condition_2_bodycam_tensor, bodycam_components = Get_Bodycam_SVD_Tensor.get_bodycam_tensor_multiple_conditions(base_directory, video_file, onsets_list, start_window, stop_window)
+    condition_1_bodycam_tensor, condition_2_bodycam_tensor, bodycam_components = Get_Bodycam_Incremental_PCA_Tensor.get_bodycam_tensor_multiple_conditions(base_directory, bodycam, onsets_list, start_window, stop_window)
 
 
     # Get Activity Tensors
@@ -111,7 +111,7 @@ def coefficient_analysis_workflow_single_mouse(base_directory, onsets_file_list,
 
 
     # Get Video File Name
-    Ridge_Regression_Model.perform_ridge_regression(base_directory, onsets_list, start_window, stop_window, activity_tensor_list, stimuli_list, video_file)
+    Ridge_Regression_Model.perform_ridge_regression(base_directory, onsets_list, start_window, stop_window, activity_tensor_list, stimuli_list, video_file, condition_1_bodycam_tensor, condition_2_bodycam_tensor)
 
     # View Individual Movie
     """
@@ -149,8 +149,8 @@ controls = [
 
 
 experiment_name = "Vis 2 Contextual Modulation Running Residuals"
-start_window = -77
-stop_window = 56
+start_window = -10
+stop_window = 20
 onset_files = [["visual_context_stable_vis_2_onsets.npy"], ["odour_context_stable_vis_2_onsets.npy"]]
 tensor_names = ["Visual_Context_Stable_Vis_2_Running_Residual", "Odour_Context_Stable_Vis_2_Running_Residual"]
 plot_titles = ["Visual_Context_Stable_Vis_2", "Odour_Context_Stable_Vis_2"]
