@@ -55,7 +55,7 @@ def get_video_file_name(base_directory):
     return None
 
 
-def coefficient_analysis_workflow_single_mouse(base_directory, onsets_file_list, tensor_names, start_window, stop_window, experiment_name, recalculate=False):
+def coefficient_analysis_workflow_single_mouse(base_directory, onsets_file_list, tensor_names, start_window, stop_window, stimuli_list, plot_titles, experiment_name, recalculate=False):
 
     # Check Workflow Directories
     movement_controls_directory = os.path.join(base_directory, "Movement_Controls")
@@ -95,8 +95,13 @@ def coefficient_analysis_workflow_single_mouse(base_directory, onsets_file_list,
     print("Video File", video_file)
 
     # Get Mousecam Tensors
-    condition_1_bodycam_tensor, condition_2_bodycam_tensor, bodycam_components = Get_Bodycam_Incremental_PCA_Tensor.get_bodycam_tensor_multiple_conditions(base_directory, bodycam, onsets_list, start_window, stop_window)
-
+    if os.path.exists(os.path.join(base_directory, "condition_1_bodycam_tensor_cosyne.npy")):
+        condition_1_bodycam_tensor = np.load(os.path.join(base_directory, "condition_1_bodycam_tensor_cosyne.npy"))
+        condition_2_bodycam_tensor = np.load(os.path.join(base_directory, "condition_2_bodycam_tensor_cosyne.npy"))
+    else:
+        condition_1_bodycam_tensor, condition_2_bodycam_tensor, bodycam_components = Get_Bodycam_Incremental_PCA_Tensor.get_bodycam_tensor_multiple_conditions(base_directory, video_file, onsets_list, start_window, stop_window)
+        np.save(os.path.join(base_directory, "condition_1_bodycam_tensor_cosyne.npy"), condition_1_bodycam_tensor)
+        np.save(os.path.join(base_directory, "condition_2_bodycam_tensor_cosyne.npy"), condition_2_bodycam_tensor)
 
     # Get Activity Tensors
     activity_tensor_list = []
@@ -107,11 +112,8 @@ def coefficient_analysis_workflow_single_mouse(base_directory, onsets_file_list,
 
 
 
-    stimuli_list = None
-
-
     # Get Video File Name
-    Ridge_Regression_Model.perform_ridge_regression(base_directory, onsets_list, start_window, stop_window, activity_tensor_list, stimuli_list, video_file, condition_1_bodycam_tensor, condition_2_bodycam_tensor)
+    Ridge_Regression_Model.perform_ridge_regression(base_directory, onsets_list, start_window, stop_window, activity_tensor_list, stimuli_list, condition_1_bodycam_tensor, condition_2_bodycam_tensor)
 
     # View Individual Movie
     """
@@ -132,17 +134,17 @@ def coefficient_analysis_workflow_single_mouse(base_directory, onsets_file_list,
     """
 
 controls = [
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_02_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_08_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive2/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_02_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive2/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_08_Transition_Imaging",
 
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_23_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_31_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive2/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_23_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive2/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_03_31_Transition_Imaging",
 
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_15_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_17_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive2/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_15_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive2/Widefield_Imaging/Transition_Analysis/NXAK14.1A/2021_06_17_Transition_Imaging",
 
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_10_29_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive1/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_11_05_Transition_Imaging"
+            "/media/matthew/Seagate Expansion Drive2/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_10_29_Transition_Imaging",
+            "/media/matthew/Seagate Expansion Drive2/Widefield_Imaging/Transition_Analysis/NXAK22.1A/2021_11_05_Transition_Imaging"
             ]
 
 
@@ -152,11 +154,12 @@ experiment_name = "Vis 2 Contextual Modulation Running Residuals"
 start_window = -10
 stop_window = 20
 onset_files = [["visual_context_stable_vis_2_onsets.npy"], ["odour_context_stable_vis_2_onsets.npy"]]
-tensor_names = ["Visual_Context_Stable_Vis_2_Running_Residual", "Odour_Context_Stable_Vis_2_Running_Residual"]
+tensor_names = ["Visual_Context_Stable_Vis_2_Activity_Tensor", "Odour_Context_Stable_Vis_2_Activity_Tensor"]
 plot_titles = ["Visual_Context_Stable_Vis_2", "Odour_Context_Stable_Vis_2"]
 behavioural_traces = ["Running", "Lick", "Visual 2"]
 combined_video_save_directory = r"/home/matthew/Documents/Thesis_Comitte_24_02_2022/Vis_2_Contextual_Modulation_Controls_Residuals"
+stimuli_list = ["Visual 2", "Visual 2"]
 
 # Get For Each Mouse
 for base_directory in controls:
-    coefficient_analysis_workflow_single_mouse(base_directory, onset_files, tensor_names, start_window, stop_window, plot_titles, experiment_name)
+    coefficient_analysis_workflow_single_mouse(base_directory, onset_files, tensor_names, start_window, stop_window, stimuli_list, plot_titles, experiment_name)

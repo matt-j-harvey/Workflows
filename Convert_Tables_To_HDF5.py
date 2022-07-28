@@ -27,7 +27,7 @@ def convert_tables_to_hdf5(base_directory):
 
     print("Reformatting: ", base_directory)
 
-    output_file = os.path.join(base_directory + "Delta_F_Registered.hdf5")
+    output_file = os.path.join(base_directory, "Delta_F_Registered.hdf5")
 
     with h5py.File(output_file, "w") as f:
         dataset = f.create_dataset("Data", (number_of_frames, number_of_pixels), dtype=np.float32, chunks=True, compression="gzip")
@@ -41,15 +41,13 @@ def convert_tables_to_hdf5(base_directory):
 
 
 
+"""
+"/media/matthew/Seagate Expansion Drive1/Switching_Analysis/Wildtype/NRXN78.1A/2020_12_09_Switching",
+"/media/matthew/Seagate Expansion Drive1/Switching_Analysis/Wildtype/NXAK4.1B/2021_03_04_Switching_Imaging",
+"/media/matthew/Seagate Expansion Drive1/Switching_Analysis/Wildtype/NXAK7.1B/2021_03_02_Switching_Imaging",
+"""
 
-
-file_list = [
-            #"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK4.1B/2021_04_10_Transition_Imaging",
-            #"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK7.1B/2021_04_02_Transition_Imaging",
-            #"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK10.1A/2021_06_18_Transition_Imaging",
-            #"/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging",
-            "/media/matthew/Seagate Expansion Drive1/Switching_Analysis/Homs/NRXN71.2A/2020_12_17_Switching_Imaging"
-]
+file_list = ["/media/matthew/Seagate Expansion Drive1/Switching_Analysis/Wildtype/NXAK14.1A/2021_06_09_Switching_Imaging"]
 
 
 for base_directory in file_list:

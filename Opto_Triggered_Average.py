@@ -159,6 +159,7 @@ def transform_image(transformation_details, image):
 
     return image
 
+
 def plot_composite_activations(base_directory):
 
     # Load Stim Log File
@@ -186,7 +187,7 @@ def plot_composite_activations(base_directory):
     indicies, image_height, image_width = Widefield_General_Functions.load_mask(base_directory)
 
     # Load Alignment Transformation
-    transformation_dictionary = np.load(os.path.join(base_directory, "Transformation_Dictionary.npy"), allow_pickle=True)[()]
+    #transformation_dictionary = np.load(os.path.join(base_directory, "Transformation_Dictionary.npy"), allow_pickle=True)[()]
 
     # Get ROI Edges
     roi_mask_edge_list = []
@@ -198,7 +199,7 @@ def plot_composite_activations(base_directory):
 
         roi_mask = np.flip(roi_mask, axis=0)
 
-        roi_mask = transform_image(transformation_dictionary, roi_mask)
+        #roi_mask = transform_image(transformation_dictionary, roi_mask)
 
         edges = cv2.Canny(roi_mask, 0.5, 1)
         
@@ -224,7 +225,11 @@ def plot_composite_activations(base_directory):
     black_rgba_colour = [0,0,0,1]
     white_rgba_colour = [1,1,1,1]
 
+    interval = 36
+    timelist = list(range(-100 * interval, 100 * interval,  interval))
+
     for timepoint in range(number_of_timepoints):
+        time_value = timelist[timepoint]
 
 
         for stimuli_index in range(number_of_stimuli):
@@ -235,7 +240,7 @@ def plot_composite_activations(base_directory):
             # Get Brain Activity
             brain_activity = activity_matricies_list[stimuli_index][timepoint]
             brain_image = Widefield_General_Functions.create_image_from_data(brain_activity, indicies, image_height, image_width)
-
+            brain_image = np.divide(brain_image, 50000)
             # Colour Brain Image
             brain_image = colourmap(brain_image)
 
@@ -255,7 +260,7 @@ def plot_composite_activations(base_directory):
             # Remove Axis
             axis.axis('off')
 
-        figure_1.suptitle(str(timepoint))
+        figure_1.suptitle(str(time_value))
 
         plt.savefig(os.path.join(save_directory, str(timepoint).zfill(3) + ".png"))
         plt.clf()
@@ -276,13 +281,18 @@ def plot_composite_activations(base_directory):
 def get_average_opto_responses(base_directory):
 
     # Check Correct LED Colour Labels
-    #blue_file = 'KGCA7.1B_Test_19_20220119-125515_Blue_Data.hdf5'
-    #check_blue_violet_files(base_directory, 'KGCA7.1B_Test_19_20220119-125515_Blue_Data.hdf5', 'KGCA7.1B_Test_19_20220119-125515_Violet_Data.hdf5')
 
     # Load Delfa F Data
-    delta_f_file = os.path.join(base_directory, "Delta_F_Registered.hdf5")
+    """
+    delta_f_file = os.path.join(base_directory, "Delta_F.hdf5")
     delta_f_file_container = h5py.File(delta_f_file, 'r')
     delta_f_matrix = delta_f_file_container['Data']
+    delta_f_matrix = np.array(delta_f_matrix)
+    print("Delta F MAtrix Shape", np.shape(delta_f_matrix))
+    """
+    delta_f_file = os.path.join(base_directory, "Delta_F.h5")
+    delta_f_file_container = tables.open_file(delta_f_file, 'r')
+    delta_f_matrix = delta_f_file_container.root.Data
     delta_f_matrix = np.array(delta_f_matrix)
     print("Delta F MAtrix Shape", np.shape(delta_f_matrix))
 
@@ -300,12 +310,12 @@ def get_average_opto_responses(base_directory):
     frame_trace = ai_data[stimuli_dictionary["LED 1"]]
 
     # Get Opto Onsets
-    #plt.plot(opto_trace, alpha=0.2)
-    #plt.plot(frame_trace, alpha=0.2)
-    #plt.show()
+    plt.plot(opto_trace, alpha=0.2)
+    plt.plot(frame_trace, alpha=0.2)
+    plt.show()
 
 
-    threshold = 3
+    threshold = 2
     opto_onsets = Widefield_General_Functions.get_step_onsets(opto_trace, threshold=threshold, window=1000)
     print("opto onsets", len(opto_onsets))
 
@@ -367,7 +377,7 @@ def get_average_opto_responses(base_directory):
             frame_data = mean_response[frame_index]
             frame_image = Widefield_General_Functions.create_image_from_data(frame_data, indicies, image_height, image_width)
 
-            plt.imshow(frame_image, cmap='jet', vmin=0, vmax=1)
+            plt.imshow(frame_image, cmap='jet', vmin=0, vmax=50000)
             plt.draw()
             plt.pause(0.1)
             plt.savefig(os.path.join(output_directory, str(frame_index).zfill(3) + ".png"))
@@ -384,9 +394,17 @@ def get_average_opto_responses(base_directory):
     """
 
 
-#
+#     ,
 
-base_directory = "/media/matthew/29D46574463D2856/Opto_Test/KGCA7.1B/2021_01_27_Opto_Test_Range"
 
-get_average_opto_responses(base_directory)
-plot_composite_activations(base_directory)
+session_list = [r"/media/matthew/Seagate Expansion Drive2/Opto_Test/KPVB11.1G/2022_06_27_Opto_Test_Filter"]
+session_list = [r"/media/matthew/Seagate Expansion Drive2/Opto_Test/KPVB11.1J/2022_06_27_Opto_Test_Filter"]
+session_list = [r"/media/matthew/Seagate Expansion Drive2/Opto_Test/KPVB11.1G/2022_06_28_Opto_Test_No_Filter"]
+session_list = ["/media/matthew/External_Harddrive_1/Opto_Test/KVIP25.5H/2022_07_26_Opto_Test_No_Filter"]
+#session_list = ["/media/matthew/External_Harddrive_1/Opto_Test/Projector_Calib/2022_07_26_Calibration"]
+session_list = ["/media/matthew/External_Harddrive_1/Opto_Test/KVIP25.5H/2022_07_27_Opto_Test_Grid"]
+
+for base_directory in session_list:
+    get_average_opto_responses(base_directory)
+    plot_composite_activations(base_directory)
+

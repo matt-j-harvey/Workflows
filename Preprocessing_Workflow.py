@@ -45,8 +45,8 @@ def extract_signal():
 
 
 
-base_directory = "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK4.1A/2021_04_10_Transition_Imaging"
-template_directory = "/media/matthew/Seagate Expansion Drive/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging"
+base_directory = "//media/matthew/Seagate Expansion Drive2/Widefield_Imaging/Opto_Test/KGCA_7.1B/2022_03_01_Opto_Test_Filter"
+template_directory = "/media/matthew/Seagate Expansion Drive2/Widefield_Imaging/Transition_Analysis/NXAK16.1B/2021_07_08_Transition_Imaging"
 
 
 # Make Windows
